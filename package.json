@@ -1,0 +1,58 @@
+{
+  "name": "n8n-nodes-qualitymax",
+  "version": "0.1.0",
+  "description": "n8n community node for QualityMax — AI-native test automation platform",
+  "keywords": [
+    "n8n-community-node-package",
+    "qualitymax",
+    "testing",
+    "qa",
+    "playwright",
+    "k6",
+    "test-automation",
+    "ai-testing"
+  ],
+  "license": "MIT",
+  "homepage": "https://qualitymax.io",
+  "author": {
+    "name": "QualityMax",
+    "email": "hello@qualitymax.io"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Quality-Max/n8n-nodes-qualitymax"
+  },
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc && npm run copy-icons",
+    "copy-icons": "cp nodes/QualityMax/qualitymax.svg dist/nodes/QualityMax/",
+    "dev": "tsc --watch",
+    "format": "prettier nodes credentials --write",
+    "lint": "eslint nodes credentials --ext .ts",
+    "lintfix": "eslint nodes credentials --ext .ts --fix",
+    "prepublishOnly": "npm run build"
+  },
+  "files": [
+    "dist"
+  ],
+  "n8n": {
+    "n8nNodesApiVersion": 1,
+    "credentials": [
+      "dist/credentials/QualityMaxApi.credentials.js"
+    ],
+    "nodes": [
+      "dist/nodes/QualityMax/QualityMax.node.js",
+      "dist/nodes/QualityMax/QualityMaxTrigger.node.js"
+    ]
+  },
+  "devDependencies": {
+    "@types/node": "^18.19.130",
+    "eslint": "^8.38.0",
+    "n8n-workflow": "^2.16.0",
+    "prettier": "^2.8.8",
+    "typescript": "^5.9.3"
+  },
+  "peerDependencies": {
+    "n8n-workflow": "*"
+  }
+}

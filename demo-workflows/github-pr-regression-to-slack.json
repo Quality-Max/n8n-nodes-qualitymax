@@ -1,0 +1,186 @@
+{
+  "name": "GitHub PR Merged → QualityMax Regression → Slack",
+  "description": "When a PR merges to main, run the QualityMax regression suite and post the result to Slack with a link to the full report.",
+  "nodes": [
+    {
+      "id": "github-trigger",
+      "name": "GitHub: PR Merged",
+      "type": "n8n-nodes-base.githubTrigger",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "parameters": {
+        "owner": "={{ $env.GITHUB_ORG }}",
+        "repository": "={{ $env.GITHUB_REPO }}",
+        "events": ["pull_request"],
+        "additionalFields": {}
+      },
+      "webhookId": "github-pr-webhook"
+    },
+    {
+      "id": "filter-merged",
+      "name": "Filter: Only Merged to Main",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 1,
+      "position": [460, 300],
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.action }}",
+              "operation": "equals",
+              "value2": "closed"
+            },
+            {
+              "value1": "={{ $json.pull_request.merged }}",
+              "operation": "equals",
+              "value2": "true"
+            },
+            {
+              "value1": "={{ $json.pull_request.base.ref }}",
+              "operation": "equals",
+              "value2": "main"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "slack-start",
+      "name": "Slack: Notify Regression Started",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2,
+      "position": [680, 200],
+      "parameters": {
+        "resource": "message",
+        "operation": "post",
+        "channel": "={{ $env.SLACK_CHANNEL }}",
+        "text": ":hourglass: *QualityMax regression starting* for PR #{{ $('GitHub: PR Merged').item.json.pull_request.number }} — _{{ $('GitHub: PR Merged').item.json.pull_request.title }}_"
+      }
+    },
+    {
+      "id": "execute-script",
+      "name": "QualityMax: Execute Regression Suite",
+      "type": "n8n-nodes-qualitymax.qualityMax",
+      "typeVersion": 1,
+      "position": [680, 340],
+      "parameters": {
+        "resource": "script",
+        "operation": "execute",
+        "scriptId": "={{ $env.QM_REGRESSION_SCRIPT_ID }}"
+      },
+      "credentials": {
+        "qualityMaxApi": {
+          "id": "qualitymax-api-cred",
+          "name": "QualityMax API"
+        }
+      }
+    },
+    {
+      "id": "wait",
+      "name": "Wait: Poll Every 30s (up to 10 min)",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [900, 340],
+      "parameters": {
+        "resume": "timeInterval",
+        "unit": "seconds",
+        "value": 30
+      }
+    },
+    {
+      "id": "get-results",
+      "name": "QualityMax: Get Execution Results",
+      "type": "n8n-nodes-qualitymax.qualityMax",
+      "typeVersion": 1,
+      "position": [1120, 340],
+      "parameters": {
+        "resource": "script",
+        "operation": "getResults",
+        "scriptId": "={{ $env.QM_REGRESSION_SCRIPT_ID }}",
+        "executionId": "={{ $('QualityMax: Execute Regression Suite').item.json.execution_id }}"
+      },
+      "credentials": {
+        "qualityMaxApi": {
+          "id": "qualitymax-api-cred",
+          "name": "QualityMax API"
+        }
+      }
+    },
+    {
+      "id": "check-done",
+      "name": "Route: Still Running?",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 1,
+      "position": [1340, 340],
+      "parameters": {
+        "dataType": "string",
+        "value1": "={{ $json.status }}",
+        "rules": {
+          "rules": [
+            { "value2": "running", "outputKey": "still_running" },
+            { "value2": "passed", "outputKey": "done" },
+            { "value2": "failed", "outputKey": "done" }
+          ]
+        },
+        "fallbackOutput": "done"
+      }
+    },
+    {
+      "id": "slack-pass",
+      "name": "Slack: Post PASSED",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2,
+      "position": [1600, 240],
+      "parameters": {
+        "resource": "message",
+        "operation": "post",
+        "channel": "={{ $env.SLACK_CHANNEL }}",
+        "text": ":white_check_mark: *Regression PASSED* for PR #{{ $('GitHub: PR Merged').item.json.pull_request.number }}\n>*Tests:* {{ $('QualityMax: Get Execution Results').item.json.passed_count }}/{{ $('QualityMax: Get Execution Results').item.json.total_count }} passed\n>*Duration:* {{ $('QualityMax: Get Execution Results').item.json.duration_seconds }}s\n>*Report:* {{ $env.QM_BASE_URL }}/executions/{{ $('QualityMax: Execute Regression Suite').item.json.execution_id }}"
+      }
+    },
+    {
+      "id": "slack-fail",
+      "name": "Slack: Post FAILED",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2,
+      "position": [1600, 440],
+      "parameters": {
+        "resource": "message",
+        "operation": "post",
+        "channel": "={{ $env.SLACK_CHANNEL }}",
+        "text": ":x: *Regression FAILED* for PR #{{ $('GitHub: PR Merged').item.json.pull_request.number }} — _{{ $('GitHub: PR Merged').item.json.pull_request.title }}_\n>*Failed tests:* {{ $('QualityMax: Get Execution Results').item.json.failed_count }}\n>*Report:* {{ $env.QM_BASE_URL }}/executions/{{ $('QualityMax: Execute Regression Suite').item.json.execution_id }}\n*Failed cases:*\n{{ $('QualityMax: Get Execution Results').item.json.failures.map(f => '• ' + f.name).join('\\n') }}"
+      }
+    }
+  ],
+  "connections": {
+    "GitHub: PR Merged": { "main": [[{ "node": "Filter: Only Merged to Main", "type": "main", "index": 0 }]] },
+    "Filter: Only Merged to Main": {
+      "main": [
+        [
+          { "node": "Slack: Notify Regression Started", "type": "main", "index": 0 },
+          { "node": "QualityMax: Execute Regression Suite", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "QualityMax: Execute Regression Suite": { "main": [[{ "node": "Wait: Poll Every 30s (up to 10 min)", "type": "main", "index": 0 }]] },
+    "Wait: Poll Every 30s (up to 10 min)": { "main": [[{ "node": "QualityMax: Get Execution Results", "type": "main", "index": 0 }]] },
+    "QualityMax: Get Execution Results": { "main": [[{ "node": "Route: Still Running?", "type": "main", "index": 0 }]] },
+    "Route: Still Running?": {
+      "main": [
+        [{ "node": "Wait: Poll Every 30s (up to 10 min)", "type": "main", "index": 0 }],
+        [
+          { "node": "Slack: Post PASSED", "type": "main", "index": 0 },
+          { "node": "Slack: Post FAILED", "type": "main", "index": 0 }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": ["qualitymax", "testing", "ci-cd", "regression"],
+  "triggerCount": 0,
+  "updatedAt": "2026-04-22T00:00:00.000Z",
+  "versionId": "1"
+}
