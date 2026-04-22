@@ -12,10 +12,15 @@
 | **AI Crawl** | Start, Check Status, Get Results |
 | **k6 Performance** | Get Many Scripts, Run Test, Check Status, Get Report, Pre-Deploy Gate |
 
-Plus a **QualityMax Trigger** node that fires on:
-- Test execution completed (pass/fail filter)
-- k6 run completed
-- AI crawl completed
+Plus a **QualityMax Trigger** polling node that fires on:
+
+| Event | Description |
+|---|---|
+| Test Execution Completed | Playwright/Cypress/etc. script finished — filter by pass/fail |
+| k6 Run Completed | k6 performance test finished — filter by pass/fail |
+| AI Crawl Completed | AI crawl job finished and tests generated |
+
+The trigger polls on n8n's configured schedule (default 1 min) and only emits items newer than the last poll.
 
 ## Hero workflow
 

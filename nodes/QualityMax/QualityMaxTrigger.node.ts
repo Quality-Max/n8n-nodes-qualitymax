@@ -92,66 +92,75 @@ export class QualityMaxTrigger implements INodeType {
 
 		const now = new Date();
 		const workflowStaticData = this.getWorkflowStaticData('node');
-
-		// Track the last checked timestamp to avoid re-emitting items
-		const lastChecked = (workflowStaticData.lastChecked as string) ?? new Date(now.getTime() - 60_000).toISOString();
+		const lastChecked = (workflowStaticData.lastChecked as string)
+			?? new Date(now.getTime() - 60_000).toISOString();
 		workflowStaticData.lastChecked = now.toISOString();
+		const lastCheckedDate = new Date(lastChecked);
 
-		let path = '';
 		let results: IDataObject[] = [];
 
 		try {
 			if (triggerOn === 'executionCompleted') {
 				const qs: Record<string, string | number | boolean> = {
-					completed_after: lastChecked,
+					limit: 50,
 					...(projectId ? { project_id: projectId } : {}),
 				};
-				const response = await qualityMaxRequest(this, '/automation/results', qs) as IDataObject;
+				const response = await qualityMaxRequest(this, '/api/automation/results', qs) as IDataObject;
 				const items = (response.results ?? response.data ?? response ?? []) as IDataObject[];
+
 				results = items.filter((item: IDataObject) => {
+					const createdAt = item.created_at as string | undefined;
+					if (!createdAt || new Date(createdAt) <= lastCheckedDate) return false;
 					if (statusFilter === 'failed') return item.status === 'failed' || item.passed === false;
 					if (statusFilter === 'passed') return item.status === 'passed' || item.passed === true;
 					return true;
 				});
 
 			} else if (triggerOn === 'k6Completed') {
-				path = '/k6/scripts';
-				const scriptsResponse = await qualityMaxRequest(this, path, projectId ? { project_id: projectId } : undefined) as IDataObject;
+				const qs = projectId ? { project_id: projectId } : undefined;
+				const scriptsResponse = await qualityMaxRequest(this, '/api/k6/scripts', qs) as IDataObject;
 				const scripts = (scriptsResponse.scripts ?? scriptsResponse ?? []) as IDataObject[];
 
 				for (const script of scripts) {
-					const execResponse = await qualityMaxRequest(
-						this,
-						`/k6/status/${script.last_execution_id}`,
-					) as IDataObject;
-					if (
-						execResponse.status === 'completed' &&
-						new Date(execResponse.completed_at as string) > new Date(lastChecked)
-					) {
-						if (statusFilter === 'failed' && execResponse.passed) continue;
-						if (statusFilter === 'passed' && !execResponse.passed) continue;
-						results.push({ script, execution: execResponse });
+					if (!script.last_execution_id) continue;
+					try {
+						const execResponse = await qualityMaxRequest(
+							this,
+							`/api/k6/status/${script.last_execution_id}`,
+						) as IDataObject;
+						const completedAt = execResponse.completed_at as string | undefined;
+						if (
+							execResponse.status === 'completed' &&
+							completedAt &&
+							new Date(completedAt) > lastCheckedDate
+						) {
+							if (statusFilter === 'failed' && execResponse.passed) continue;
+							if (statusFilter === 'passed' && !execResponse.passed) continue;
+							results.push({ script, execution: execResponse });
+						}
+					} catch {
+						// skip scripts whose last execution can't be fetched
 					}
 				}
 
 			} else if (triggerOn === 'crawlCompleted') {
 				const qs = projectId ? { project_id: projectId } : undefined;
-				const response = await qualityMaxRequest(this, '/ai-crawl/jobs', qs) as IDataObject;
+				const response = await qualityMaxRequest(this, '/api/ai-crawl/jobs', qs) as IDataObject;
 				const jobs = (response.jobs ?? response.data ?? response ?? []) as IDataObject[];
 				results = jobs.filter((job: IDataObject) => {
+					const completedAt = job.completed_at as string | undefined;
 					return (
 						job.status === 'completed' &&
-						new Date(job.completed_at as string) > new Date(lastChecked)
+						completedAt &&
+						new Date(completedAt) > lastCheckedDate
 					);
 				});
 			}
 		} catch {
-			// Return null to signal no new data rather than crashing the trigger
 			return null;
 		}
 
 		if (!results.length) return null;
-
 		return [results.map((item) => ({ json: item }))];
 	}
 }

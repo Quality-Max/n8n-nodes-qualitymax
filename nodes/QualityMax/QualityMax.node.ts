@@ -38,7 +38,7 @@ export class QualityMax implements INodeType {
 		icon: 'file:qualitymax.svg',
 		group: ['output'],
 		version: 1,
-		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
+		subtitle: '={{$parameter["resource"] + " → " + $parameter["operation"]}}',
 		description: 'Interact with QualityMax — AI-native test automation platform',
 		defaults: { name: 'QualityMax' },
 		inputs: ['main'],
@@ -394,19 +394,19 @@ export class QualityMax implements INodeType {
 				// ── PROJECT ──────────────────────────────────────────────────────
 				if (resource === 'project') {
 					if (operation === 'getAll') {
-						responseData = await qualityMaxRequest(this, 'GET', '/projects');
+						responseData = await qualityMaxRequest(this, 'GET', '/api/projects');
 					} else if (operation === 'get') {
 						const id = this.getNodeParameter('projectId', i) as string;
-						responseData = await qualityMaxRequest(this, 'GET', `/projects/${id}`);
+						responseData = await qualityMaxRequest(this, 'GET', `/api/projects/${id}`);
 					} else if (operation === 'create') {
-						responseData = await qualityMaxRequest(this, 'POST', '/projects', {
+						responseData = await qualityMaxRequest(this, 'POST', '/api/projects', {
 							name: this.getNodeParameter('projectName', i),
 							description: this.getNodeParameter('projectDescription', i),
 						});
 					} else if (operation === 'getTrends') {
 						const id = this.getNodeParameter('projectId', i) as string;
 						const days = this.getNodeParameter('days', i) as number;
-						responseData = await qualityMaxRequest(this, 'GET', `/projects/${id}/trends`, undefined, { days });
+						responseData = await qualityMaxRequest(this, 'GET', `/api/projects/${id}/trends`, undefined, { days });
 					}
 
 				// ── TEST CASE ────────────────────────────────────────────────────
@@ -414,14 +414,14 @@ export class QualityMax implements INodeType {
 					if (operation === 'getAll') {
 						const projectId = this.getNodeParameter('projectId', i, '') as string;
 						responseData = await qualityMaxRequest(
-							this, 'GET', '/test-cases', undefined,
+							this, 'GET', '/api/test-cases', undefined,
 							projectId ? { project_id: projectId } : undefined,
 						);
 					} else if (operation === 'get') {
 						const id = this.getNodeParameter('testCaseId', i) as string;
-						responseData = await qualityMaxRequest(this, 'GET', `/test-cases/${id}`);
+						responseData = await qualityMaxRequest(this, 'GET', `/api/test-cases/${id}`);
 					} else if (operation === 'create') {
-						responseData = await qualityMaxRequest(this, 'POST', '/test-cases', {
+						responseData = await qualityMaxRequest(this, 'POST', '/api/test-cases', {
 							title: this.getNodeParameter('title', i),
 							description: this.getNodeParameter('description', i),
 							project_id: this.getNodeParameter('projectId', i),
@@ -433,18 +433,18 @@ export class QualityMax implements INodeType {
 						const description = this.getNodeParameter('description', i, '') as string;
 						if (title) body.title = title;
 						if (description) body.description = description;
-						responseData = await qualityMaxRequest(this, 'PUT', `/test-cases/${id}`, body);
+						responseData = await qualityMaxRequest(this, 'PUT', `/api/test-cases/${id}`, body);
 					} else if (operation === 'delete') {
 						const id = this.getNodeParameter('testCaseId', i) as string;
-						responseData = await qualityMaxRequest(this, 'DELETE', `/test-cases/${id}`);
+						responseData = await qualityMaxRequest(this, 'DELETE', `/api/test-cases/${id}`);
 					} else if (operation === 'generateCode') {
 						const id = this.getNodeParameter('testCaseId', i) as string;
-						responseData = await qualityMaxRequest(this, 'POST', `/test-cases/${id}/generate-code`, {
+						responseData = await qualityMaxRequest(this, 'POST', `/api/test-cases/${id}/generate-code`, {
 							framework: this.getNodeParameter('framework', i),
 						});
 					} else if (operation === 'enhance') {
 						const id = this.getNodeParameter('testCaseId', i) as string;
-						responseData = await qualityMaxRequest(this, 'POST', `/test-cases/${id}/enhance`);
+						responseData = await qualityMaxRequest(this, 'POST', `/api/test-cases/${id}/enhance`);
 					}
 
 				// ── SCRIPT ───────────────────────────────────────────────────────
@@ -452,19 +452,17 @@ export class QualityMax implements INodeType {
 					if (operation === 'getAll') {
 						const projectId = this.getNodeParameter('projectId', i, '') as string;
 						responseData = await qualityMaxRequest(
-							this, 'GET', '/automation/scripts', undefined,
+							this, 'GET', '/api/automation/scripts', undefined,
 							projectId ? { project_id: projectId } : undefined,
 						);
 					} else if (operation === 'execute') {
 						const scriptId = this.getNodeParameter('scriptId', i) as string;
-						responseData = await qualityMaxRequest(this, 'POST', '/automation/execute', {
+						responseData = await qualityMaxRequest(this, 'POST', '/api/automation/execute', {
 							script_id: scriptId,
 						});
 					} else if (operation === 'getResults') {
 						const executionId = this.getNodeParameter('executionId', i) as string;
-						responseData = await qualityMaxRequest(this, 'GET', '/automation/results', undefined, {
-							execution_id: executionId,
-						});
+						responseData = await qualityMaxRequest(this, 'GET', `/api/automation/results/${executionId}`);
 					}
 
 				// ── AI CRAWL ─────────────────────────────────────────────────────

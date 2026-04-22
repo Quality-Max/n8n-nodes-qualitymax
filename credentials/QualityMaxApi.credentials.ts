@@ -8,7 +8,7 @@ import {
 export class QualityMaxApi implements ICredentialType {
 	name = 'qualityMaxApi';
 	displayName = 'QualityMax API';
-	documentationUrl = 'https://docs.qualitymax.io/api';
+	documentationUrl = 'https://github.com/Quality-Max/n8n-nodes-qualitymax';
 	properties: INodeProperties[] = [
 		{
 			displayName: 'API Token',
@@ -40,7 +40,7 @@ export class QualityMaxApi implements ICredentialType {
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: '={{$credentials.baseUrl}}',
-			url: '/projects',
+			url: '/api/projects',
 			method: 'GET',
 		},
 	};
