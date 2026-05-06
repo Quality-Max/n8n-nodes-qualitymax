@@ -1,5 +1,7 @@
 # n8n-nodes-qualitymax
 
+[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-support-yellow?logo=buymeacoffee)](https://buymeacoffee.com/qualitymax)
+
 [QualityMax](https://qualitymax.io) community node for [n8n](https://n8n.io) — connect AI-native test automation into any workflow.
 
 ## What you can do
