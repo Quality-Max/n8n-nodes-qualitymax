@@ -1,5 +1,9 @@
 # n8n-nodes-qualitymax
 
+[Documentation](https://docs.qualitymax.io/) · [Partner integrations](https://docs.qualitymax.io/partner-white-label/)
+
+Connect a QualityMax account using an n8n credential, then use the included workflow example as a starting point for your own project.
+
 [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-support-yellow?logo=buymeacoffee)](https://buymeacoffee.com/qualitymax)
 
 [QualityMax](https://qualitymax.io) community node for [n8n](https://n8n.io) — connect AI-native test automation into any workflow.
@@ -61,7 +65,7 @@ npm run build
 
 ## Credentials
 
-Generate an API token at **qualitymax.io/settings → API Tokens**. Tokens start with `qm-`. Add it as a **QualityMax API** credential in n8n.
+Generate an API token at [QualityMax Settings → API Tokens](https://app.qualitymax.io/#/settings). Tokens start with `qm-`. Add it as a **QualityMax API** credential in n8n.
 
 ## License
 
